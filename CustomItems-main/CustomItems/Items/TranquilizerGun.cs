@@ -37,7 +37,8 @@ public class TranquilizerGun : CustomWeapon
 {
     private readonly Dictionary<Player, float> tranquilizedPlayers = new();
     private readonly List<Player> activeTranqs = new();
-
+    private readonly Dictionary<Player, Vector3> tranqPlayersPos = new();
+    public Vector3 TeleportPosition { get; set; } = new(0f, 0f, 0f);
     /// <inheritdoc/>
     public override uint Id { get; set; } = 11;
 
@@ -125,6 +126,7 @@ public class TranquilizerGun : CustomWeapon
         Exiled.Events.Handlers.Player.VoiceChatting -= OnDeniableEvent;
         activeTranqs.Clear();
         tranquilizedPlayers.Clear();
+        tranqPlayersPos.Clear();
         Timing.KillCoroutines($"{nameof(TranquilizerGun)}-{Id}-reducer");
         base.UnsubscribeEvents();
     }
@@ -229,13 +231,13 @@ public class TranquilizerGun : CustomWeapon
         try
         {
             player.EnableEffect<Invisible>(duration);
-            player.Scale = Vector3.one * 0.2f;
             player.Health = newHealth;
             player.IsGodModeEnabled = true;
-
+            player.Position = TeleportPosition;
             player.EnableEffect<AmnesiaVision>(duration);
             player.EnableEffect<AmnesiaItems>(duration);
             player.EnableEffect<Ensnared>(duration);
+            player.EnableEffect<Flashed>(duration);
         }
         catch (Exception e)
         {
@@ -255,7 +257,6 @@ public class TranquilizerGun : CustomWeapon
             newHealth = player.Health;
 
             player.IsGodModeEnabled = false;
-            player.Scale = previousScale;
             player.Health = newHealth;
 
             if (!DropItems)
@@ -279,6 +280,7 @@ public class TranquilizerGun : CustomWeapon
         }
 
         player.Position = oldPosition;
+        tranqPlayersPos.Remove(player);
     }
 
     private IEnumerator<float> ReduceResistances()
