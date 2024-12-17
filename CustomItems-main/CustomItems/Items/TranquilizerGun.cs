@@ -37,8 +37,6 @@ using Random = UnityEngine.Random;
 public class TranquilizerGun : CustomWeapon
 {
 
-    Player attacker;//debug purposes
-
     private readonly Dictionary<Player, string> playerElevatorNames = new();
 
     private Vector3 elevatorPosition;
@@ -154,19 +152,44 @@ public class TranquilizerGun : CustomWeapon
         Exiled.Events.Handlers.Player.PickingUpItem += OnDeniableEvent;
         base.SubscribeEvents();
     }
+    public void Shooting(ShootingEventArgs ev)//debug purposes
+    {
+        if (ev.Player.Role.Team == Team.SCPs)
+        {
+            int r = Random.Range(1, 101);
+            Log.Debug($"{Name}: SCP roll: {r} (must be greater than {ScpResistChance})");
+            if (r <= ScpResistChance)
+            {
+                Log.Debug($"{Name}: {r} is too low, no tranq.");
+                return;
+            }
+        }
+        float duration = Duration;
 
-    /// <inheritdoc/>
+        if (!tranquilizedPlayers.TryGetValue(ev.Player, out _))
+
+            tranquilizedPlayers.Add(ev.Player, 1);
+        tranquilizedPlayers[ev.Player] *= ResistanceModifier;
+        Log.Debug($"{Name}: Resistance Duration Mod: {tranquilizedPlayers[ev.Player]}");
+
+        duration -= tranquilizedPlayers[ev.Player];
+        Log.Debug($"{Name}: Duration: {duration}");
+
+        if (duration > 0f)
+            Timing.RunCoroutine(DoTranquilize(ev.Player, duration));
+        /// <inheritdoc/>
+    }
+    /*
     protected override void OnHurting(HurtingEventArgs ev)
     {
         
         base.OnHurting(ev);
 
-        // if (ev.Attacker == ev.Player)
-        //    return;
+        if (ev.Attacker == ev.Player)
+           return;
 
-        attacker = ev.Attacker;//debug purposes
 
-        if (ev.Attacker/*Player*/.Role.Team == Team.SCPs)
+        if (ev.Player.Role.Team == Team.SCPs)
         {
             int r = Random.Range(1, 101);
             Log.Debug($"{Name}: SCP roll: {r} (must be greater than {ScpResistChance})");
@@ -179,20 +202,19 @@ public class TranquilizerGun : CustomWeapon
 
         float duration = Duration;
 
-        if (!tranquilizedPlayers.TryGetValue(//ev.Player, out _))
-            ev.Attacker, out _))
-            tranquilizedPlayers.Add(//ev.Player, 1);
-                ev.Attacker, 1);
-        tranquilizedPlayers[ev./*Player*/Attacker] *= ResistanceModifier;
-        Log.Debug($"{Name}: Resistance Duration Mod: {tranquilizedPlayers[ev.Attacker/*Player*/]}");
+        if (!tranquilizedPlayers.TryGetValue(ev.Player, out _))
 
-        duration -= tranquilizedPlayers[ev.Attacker/*Player*/];
+            tranquilizedPlayers.Add(ev.Player, 1);
+        tranquilizedPlayers[ev.Player] *= ResistanceModifier;
+        Log.Debug($"{Name}: Resistance Duration Mod: {tranquilizedPlayers[ev.Player]}");
+
+        duration -= tranquilizedPlayers[ev.Player];
         Log.Debug($"{Name}: Duration: {duration}");
 
         if (duration > 0f)
-            Timing.RunCoroutine(DoTranquilize(ev.Attacker/*Player*/, duration));
+            Timing.RunCoroutine(DoTranquilize(ev.Player, duration));
     }
-
+    */
     private IEnumerator<float> DoTranquilize(Player player, float duration)
     {
         player = attacker;//debug purposes
