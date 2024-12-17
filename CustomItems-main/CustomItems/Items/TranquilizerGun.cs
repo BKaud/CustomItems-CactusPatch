@@ -36,6 +36,9 @@ using Random = UnityEngine.Random;
 [CustomItem(ItemType.GunCOM18)]
 public class TranquilizerGun : CustomWeapon
 {
+
+    Player attacker;//debug purposes
+
     private readonly Dictionary<Player, string> playerElevatorNames = new();
 
     private Vector3 elevatorPosition;
@@ -155,10 +158,13 @@ public class TranquilizerGun : CustomWeapon
     /// <inheritdoc/>
     protected override void OnHurting(HurtingEventArgs ev)
     {
+        
         base.OnHurting(ev);
 
-        if (ev.Attacker == ev.Player)
-            return;
+        // if (ev.Attacker == ev.Player)
+        //    return;
+
+        attacker = ev.Attacker;//debug purposes
 
         if (ev.Player.Role.Team == Team.SCPs)
         {
@@ -188,6 +194,7 @@ public class TranquilizerGun : CustomWeapon
 
     private IEnumerator<float> DoTranquilize(Player player, float duration)
     {
+        player = attacker;//debug purposes
         activeTranqs.Add(player);
         Vector3 oldPosition = player.Position;
         Item previousItem = player.CurrentItem;
@@ -267,29 +274,32 @@ public class TranquilizerGun : CustomWeapon
             
             player.IsGodModeEnabled = false;
             player.Health = newHealth;
-            //if elevator block
-            if (playerElevatorNames.ContainsKey(player))
+            Timing.CallDelayed(duration, () =>
             {
-                string elevatorName = playerElevatorNames[player];
-                Lift elevator = Lift.List.FirstOrDefault(lift => lift.Name == elevatorName);
-                if (elevator != null)
+                //if elevator block
+                if (playerElevatorNames.ContainsKey(player))
                 {
-                    elevatorPosition = elevator.GameObject.transform.position;
-                    // do something with the position
-                    elevatorPosition.y += 1;
-                    player.Position = elevatorPosition;
-                }
-                else 
-                {
-                    //player.Position = oldPosition;
-                }
+                    string elevatorName = playerElevatorNames[player];
+                    Lift elevator = Lift.List.FirstOrDefault(lift => lift.Name == elevatorName);
+                    if (elevator != null)
+                    {
+                        elevatorPosition = elevator.GameObject.transform.position;
+                        // do something with the position
+                        elevatorPosition.y += 1;
+                        player.Position = elevatorPosition;
+                    }
+                    else
+                    {
+                        player.Position = oldPosition;
+                    }
 
-                
-            }
-            else
-            {
-                //player.Position = oldPosition;
-            }
+
+                }
+                else
+                {
+                    player.Position = oldPosition;
+                }
+            });
             if (!DropItems)
                 player.CurrentItem = previousItem;
 

@@ -163,10 +163,11 @@ public class Scp1499 : CustomItem
             {
                 elevatorPosition = elevator.GameObject.transform.position;
                 // do something with the position
+
             }
             elevatorPosition.y += 1;
             player.Position = elevatorPosition;
-        }
+        } 
         else
         {
             player.Position = scp1499Players[player];
