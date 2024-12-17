@@ -217,7 +217,6 @@ public class TranquilizerGun : CustomWeapon
     */
     private IEnumerator<float> DoTranquilize(Player player, float duration)
     {
-        player = attacker;//debug purposes
         activeTranqs.Add(player);
         Vector3 oldPosition = player.Position;
         Item previousItem = player.CurrentItem;
