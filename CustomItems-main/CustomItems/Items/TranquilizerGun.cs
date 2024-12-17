@@ -166,7 +166,7 @@ public class TranquilizerGun : CustomWeapon
 
         attacker = ev.Attacker;//debug purposes
 
-        if (ev.Player.Role.Team == Team.SCPs)
+        if (ev.Attacker/*Player*/.Role.Team == Team.SCPs)
         {
             int r = Random.Range(1, 101);
             Log.Debug($"{Name}: SCP roll: {r} (must be greater than {ScpResistChance})");
@@ -179,17 +179,18 @@ public class TranquilizerGun : CustomWeapon
 
         float duration = Duration;
 
-        if (!tranquilizedPlayers.TryGetValue(ev.Player, out _))
-            tranquilizedPlayers.Add(ev.Player, 1);
+        if (!tranquilizedPlayers.TryGetValue(//ev.Player, out _))
+            ev.Attacker, out _))
+            tranquilizedPlayers.Add(//ev.Player, 1);
+                ev.Attacker, 1);
+        tranquilizedPlayers[ev./*Player*/Attacker] *= ResistanceModifier;
+        Log.Debug($"{Name}: Resistance Duration Mod: {tranquilizedPlayers[ev.Attacker/*Player*/]}");
 
-        tranquilizedPlayers[ev.Player] *= ResistanceModifier;
-        Log.Debug($"{Name}: Resistance Duration Mod: {tranquilizedPlayers[ev.Player]}");
-
-        duration -= tranquilizedPlayers[ev.Player];
+        duration -= tranquilizedPlayers[ev.Attacker/*Player*/];
         Log.Debug($"{Name}: Duration: {duration}");
 
         if (duration > 0f)
-            Timing.RunCoroutine(DoTranquilize(ev.Player, duration));
+            Timing.RunCoroutine(DoTranquilize(ev.Attacker/*Player*/, duration));
     }
 
     private IEnumerator<float> DoTranquilize(Player player, float duration)
