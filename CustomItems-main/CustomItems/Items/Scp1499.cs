@@ -20,20 +20,16 @@ using Exiled.Events.EventArgs.Player;
 using MEC;
 using PlayerStatsSystem;
 using UnityEngine;
-using CommandSystem.Commands.RemoteAdmin.Doors;
-using Interactables.Interobjects;
-using NorthwoodLib.Pools;
-using PlayerRoles.FirstPersonControl;
-using System;
-using System.Runtime.CompilerServices;
-using System.Text;
-using Utils;
 
 /// <inheritdoc />
 [CustomItem(ItemType.SCP268)]
 public class Scp1499 : CustomItem
 {
     private readonly Dictionary<Player, Vector3> scp1499Players = new();
+
+    private readonly Dictionary<Player, string> playerElevatorNames = new();
+
+    private Vector3 elevatorPosition;
 
     /// <inheritdoc/>
     public override uint Id { get; set; } = 8;
@@ -135,7 +131,15 @@ public class Scp1499 : CustomItem
         else
             scp1499Players.Add(ev.Player, ev.Player.Position);
 
+        Lift elevator = Lift.Get(ev.Player.Position);
+        if (elevator != null)
+        {
+            playerElevatorNames[ev.Player] = elevator.Name;
+        }
+        else { }
+
         ev.Player.Position = TeleportPosition;
+
         ev.Player.ReferenceHub.playerEffectsController.DisableEffect<Invisible>();
 
         if (Duration > 0)
@@ -151,9 +155,22 @@ public class Scp1499 : CustomItem
     {
         if (!scp1499Players.ContainsKey(player))
             return;
-
-        player.Position = scp1499Players[player];
-
+        if (playerElevatorNames.ContainsKey(player))
+        {
+            string elevatorName = playerElevatorNames[player];
+            Lift elevator = Lift.List.FirstOrDefault(lift => lift.Name == elevatorName);
+            if (elevator != null)
+            {
+                elevatorPosition = elevator.GameObject.transform.position;
+                // do something with the position
+            }
+            elevatorPosition.y += 1;
+            player.Position = elevatorPosition;
+        }
+        else
+        {
+            player.Position = scp1499Players[player];
+        }
         bool shouldKill = false;
         if (Warhead.IsDetonated)
         {
@@ -191,5 +208,6 @@ public class Scp1499 : CustomItem
         }
 
         scp1499Players.Remove(player);
+        playerElevatorNames.Remove(player);
     }
 }

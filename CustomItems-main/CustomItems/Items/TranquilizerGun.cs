@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 using CustomPlayerEffects;
 using Exiled.API.Enums;
 using Exiled.API.Features;
@@ -35,10 +36,13 @@ using Random = UnityEngine.Random;
 [CustomItem(ItemType.GunCOM18)]
 public class TranquilizerGun : CustomWeapon
 {
+    private readonly Dictionary<Player, string> playerElevatorNames = new();
+
+    private Vector3 elevatorPosition;
     private readonly Dictionary<Player, float> tranquilizedPlayers = new();
     private readonly List<Player> activeTranqs = new();
     private readonly Dictionary<Player, Vector3> tranqPlayersPos = new();
-    public Vector3 TeleportPosition { get; set; } = new(0f, 0f, 0f);
+    public Vector3 TeleportPosition { get; set; } = new(162.455f, 1019.47f, -12.468f);
     /// <inheritdoc/>
     public override uint Id { get; set; } = 11;
 
@@ -187,7 +191,6 @@ public class TranquilizerGun : CustomWeapon
         activeTranqs.Add(player);
         Vector3 oldPosition = player.Position;
         Item previousItem = player.CurrentItem;
-        Vector3 previousScale = player.Scale;
         float newHealth = player.Health - Damage;
         List<StatusEffectBase> activeEffects = ListPool<StatusEffectBase>.Pool.Get();
         player.CurrentItem = null;
@@ -233,11 +236,17 @@ public class TranquilizerGun : CustomWeapon
             player.EnableEffect<Invisible>(duration);
             player.Health = newHealth;
             player.IsGodModeEnabled = true;
-            player.Position = TeleportPosition;
             player.EnableEffect<AmnesiaVision>(duration);
             player.EnableEffect<AmnesiaItems>(duration);
             player.EnableEffect<Ensnared>(duration);
-            player.EnableEffect<Flashed>(duration);
+            Lift elevator = Lift.Get(player.Position);
+            if (elevator != null)
+            {
+                playerElevatorNames[player] = elevator.Name;
+            }
+            else { }
+            player.Position = TeleportPosition;
+          //  player.EnableEffect<Flashed>(duration);
         }
         catch (Exception e)
         {
@@ -255,10 +264,32 @@ public class TranquilizerGun : CustomWeapon
                 yield break;
 
             newHealth = player.Health;
-
+            
             player.IsGodModeEnabled = false;
             player.Health = newHealth;
+            //if elevator block
+            if (playerElevatorNames.ContainsKey(player))
+            {
+                string elevatorName = playerElevatorNames[player];
+                Lift elevator = Lift.List.FirstOrDefault(lift => lift.Name == elevatorName);
+                if (elevator != null)
+                {
+                    elevatorPosition = elevator.GameObject.transform.position;
+                    // do something with the position
+                    elevatorPosition.y += 1;
+                    player.Position = elevatorPosition;
+                }
+                else 
+                {
+                    //player.Position = oldPosition;
+                }
 
+                
+            }
+            else
+            {
+                //player.Position = oldPosition;
+            }
             if (!DropItems)
                 player.CurrentItem = previousItem;
 
@@ -279,7 +310,7 @@ public class TranquilizerGun : CustomWeapon
             yield break;
         }
 
-        player.Position = oldPosition;
+        
         tranqPlayersPos.Remove(player);
     }
 
