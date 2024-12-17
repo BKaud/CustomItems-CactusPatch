@@ -152,6 +152,7 @@ public class TranquilizerGun : CustomWeapon
         Exiled.Events.Handlers.Player.PickingUpItem += OnDeniableEvent;
         base.SubscribeEvents();
     }
+    /*
     public void Shooting(ShootingEventArgs ev)//debug purposes
     {
         if (ev.Player.Role.Team == Team.SCPs)
@@ -179,7 +180,7 @@ public class TranquilizerGun : CustomWeapon
             Timing.RunCoroutine(DoTranquilize(ev.Player, duration));
         /// <inheritdoc/>
     }
-    /*
+    */
     protected override void OnHurting(HurtingEventArgs ev)
     {
         
@@ -214,7 +215,7 @@ public class TranquilizerGun : CustomWeapon
         if (duration > 0f)
             Timing.RunCoroutine(DoTranquilize(ev.Player, duration));
     }
-    */
+    
     private IEnumerator<float> DoTranquilize(Player player, float duration)
     {
         activeTranqs.Add(player);
