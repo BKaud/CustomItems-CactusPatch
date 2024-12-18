@@ -215,11 +215,13 @@ public class TranquilizerGun : CustomWeapon
         if (duration > 0f)
             Timing.RunCoroutine(DoTranquilize(ev.Player, duration));
     }
-    
+
     private IEnumerator<float> DoTranquilize(Player player, float duration)
     {
         activeTranqs.Add(player);
-        Vector3 oldPosition = player.Position;
+
+        // store initial states
+        // Vector3 oldPosition = player.Position; // original position stored but unused
         Item previousItem = player.CurrentItem;
         float newHealth = player.Health - Damage;
         List<StatusEffectBase> activeEffects = ListPool<StatusEffectBase>.Pool.Get();
@@ -230,121 +232,98 @@ public class TranquilizerGun : CustomWeapon
 
         activeEffects.AddRange(player.ActiveEffects.Where(effect => effect.IsEnabled));
 
-        try
+        // drop items if enabled
+        if (DropItems)
         {
-            if (DropItems)
+            foreach (Item item in player.Items.ToList())
             {
-                if (player.Items.Count < 0)
-                {
-                    foreach (Item item in player.Items.ToList())
-                    {
-                        if (TryGet(item, out CustomItem? customItem))
-                        {
-                            customItem?.Spawn(player.Position, item, player);
-                            player.RemoveItem(item);
-                        }
-                    }
-
-                    player.DropItems();
-                }
+                if (TryGet(item, out CustomItem? customItem))
+                    customItem?.Spawn(player.Position, item, player);
+                player.RemoveItem(item);
             }
         }
-        catch (Exception e)
-        {
-            Log.Error($"{nameof(DoTranquilize)}: {e}");
-        }
 
+        // spawn a ragdoll (optional for non-SCP-106 roles)
         Ragdoll? ragdoll = null;
         if (player.Role.Type != RoleTypeId.Scp106)
             ragdoll = Ragdoll.CreateAndSpawn(player.Role, player.DisplayNickname, "Tranquilized", player.Position, player.ReferenceHub.PlayerCameraReference.rotation, player);
 
-        if (player.Role is Scp096Role scp)
-            scp.RageManager.ServerEndEnrage();
-
-        try
-        {
-            player.EnableEffect<Invisible>(duration);
-            player.Health = newHealth;
-            player.IsGodModeEnabled = true;
-            player.EnableEffect<AmnesiaVision>(duration);
-            player.EnableEffect<AmnesiaItems>(duration);
-            player.EnableEffect<Ensnared>(duration);
+        // disable certain abilities (like SCP-096 rage)
+        if (player.Role is Scp096Role scp096)
+            scp096.RageManager.ServerEndEnrage();
+ // store elevator info if the player is in one
             Lift elevator = Lift.Get(player.Position);
             if (elevator != null)
-            {
                 playerElevatorNames[player] = elevator.Name;
-            }
-            else { }
-            player.Position = TeleportPosition;
-          //  player.EnableEffect<Flashed>(duration);
+
+             // teleport to your defined position
+        // apply effects and teleport
+        try
+        {
+            //player.EnableEffect<Invisible>(duration);
+            //player.EnableEffect<AmnesiaVision>(duration);
+            //player.EnableEffect<AmnesiaItems>(duration);
+           // player.EnableEffect<Ensnared>(duration);
+
+            player.Health = newHealth;
+            player.IsGodModeEnabled = true;
+
+           
         }
         catch (Exception e)
         {
-            Log.Error(e);
+            Log.Error($"Error during tranquilize effects: {e}");
         }
+player.Position = TeleportPosition;
+        yield return Timing.WaitForSeconds(duration); // wait for the duration
 
-        yield return Timing.WaitForSeconds(duration);
-
+        // reset player state
         try
         {
-            if (ragdoll != null)
-                NetworkServer.Destroy(ragdoll.GameObject);
+            ragdoll?.Destroy(); // remove ragdoll
+        //    if (player.GameObject == null) yield break;
 
-            if (player.GameObject == null)
-                yield break;
-
-            newHealth = player.Health;
-            
             player.IsGodModeEnabled = false;
-            player.Health = newHealth;
-            Timing.CallDelayed(duration, () =>
+
+            // reapply old position or elevator position if necessary
+            /*
+            if (playerElevatorNames.TryGetValue(player, out string elevatorName))
             {
-                //if elevator block
-                if (playerElevatorNames.ContainsKey(player))
+                Lift elevator = Lift.List.FirstOrDefault(l => l.Name == elevatorName);
+                if (elevator != null)
                 {
-                    string elevatorName = playerElevatorNames[player];
-                    Lift elevator = Lift.List.FirstOrDefault(lift => lift.Name == elevatorName);
-                    if (elevator != null)
-                    {
-                        elevatorPosition = elevator.GameObject.transform.position;
-                        // do something with the position
-                        elevatorPosition.y += 1;
-                        player.Position = elevatorPosition;
-                    }
-                    else
-                    {
-                        player.Position = oldPosition;
-                    }
-
-
+                    Vector3 elevatorPosition = elevator.GameObject.transform.position;
+                    elevatorPosition.y += 1; // adjust Y to avoid clipping
+                    player.Position = elevatorPosition; // commented out
                 }
                 else
-                {
-                    player.Position = oldPosition;
-                }
-            });
+                    player.Position = oldPosition; // commented out
+            }
+            else
+                player.Position = oldPosition; // commented out
+            */
+
             if (!DropItems)
                 player.CurrentItem = previousItem;
 
-            foreach (StatusEffectBase effect in activeEffects.Where(effect => (effect.Duration - duration) > 0))
-                player.EnableEffect(effect, effect.Duration);
-
-            activeTranqs.Remove(player);
+            // reapply status effects that weren't expired
+          /*  foreach (StatusEffectBase effect in activeEffects)
+            {
+                if ((effect.Duration - duration) > 0)
+                    player.EnableEffect(effect, effect.Duration - duration);
+            }
+          */
+            //activeTranqs.Remove(player);
             ListPool<StatusEffectBase>.Pool.Return(activeEffects);
         }
         catch (Exception e)
         {
-            Log.Error($"{nameof(DoTranquilize)}: {e}");
+            Log.Error($"Error resetting player state after tranquilize: {e}");
         }
 
+        // kill player if warhead detonated and underground
         if (Warhead.IsDetonated && player.Position.y < 900)
-        {
             player.Hurt(new UniversalDamageHandler(-1f, DeathTranslations.Warhead));
-            yield break;
-        }
-
-        
-        tranqPlayersPos.Remove(player);
     }
 
     private IEnumerator<float> ReduceResistances()
