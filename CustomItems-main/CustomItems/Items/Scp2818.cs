@@ -30,7 +30,8 @@ using YamlDotNet.Serialization;
 /// </summary>
 [CustomItem(ItemType.GunE11SR)]
 public class Scp2818 : CustomWeapon
-{
+{    
+    public float Duration { get; set; } = 5f;
     /// <inheritdoc/>
     public override uint Id { get; set; } = 14;
 
